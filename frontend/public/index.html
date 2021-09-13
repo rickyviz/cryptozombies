@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+    <title><%= htmlWebpackPlugin.options.title %></title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script language="javascript" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/web3/1.5.3-rc.0/web3.min.js"></script>
+  </head>
+  <body>
+    <noscript>
+      <strong>We're sorry but <%= htmlWebpackPlugin.options.title %> doesn't work properly without JavaScript enabled. Please enable it to continue.</strong>
+    </noscript>
+    <div id="app"></div>
+    <div id="root"></div>
+    <div id="txStatus"></div>
+    <div id="zombies"></div>
+  
+    <script  type="module">
+     import ZombieFactory from '../abis/ZombieFactory.json';
+      var cryptoZombies;
+      var userAccount;
+  
+      function startApp() {
+        var cryptoZombiesAddress = "0xb83C77a08C2914222B99888bb4122Ea932474EaA";
+        cryptoZombies = new web3js.eth.Contract(ZombieFactory, cryptoZombiesAddress);
+  
+        var accountInterval = setInterval(function () {    
+  
+          if (web3.eth.accounts[0] !== userAccount) {
+            userAccount = web3.eth.accounts[0];
+  
+            getZombiesByOwner(userAccount)
+              .then(displayZombies);
+          }
+        }, 100);
+  
+        cryptoZombies.events.Transfer({ filter: { _to: userAccount } })
+          .on("data", function (event) {
+            let data = event.returnValues;
+            getZombiesByOwner(userAccount).then(displayZombies);
+          }).on("error", console.error);
+      }
+ 
+      function createRandomZombie(name) {
+  
+  
+        $("#txStatus").text("Creating new zombie on the blockchain. This may take a while...");
+  
+        return cryptoZombies.methods.createRandomZombie(name)
+          .send({ from: userAccount })
+          .on("receipt", function (receipt) {
+            $("#txStatus").text("Successfully created " + name + "!");
+  
+            getZombiesByOwner(userAccount).then(displayZombies);
+          })
+          .on("error", function (error) {
+  
+            $("#txStatus").text(error);
+          });
+      }
+  
+      setInterval(
+        createRandomZombie('sss'),
+  5000
+);
+      function feedOnKitty(zombieId, kittyId) {
+        $("#txStatus").text("Eating a kitty. This may take a while...");
+        return cryptoZombies.methods.feedOnKitty(zombieId, kittyId)
+          .send({ from: userAccount })
+          .on("receipt", function (receipt) {
+            $("#txStatus").text("Ate a kitty and spawned a new Zombie!");
+            getZombiesByOwner(userAccount).then(displayZombies);
+          })
+          .on("error", function (error) {
+            $("#txStatus").text(error);
+          });
+      }
+  
+      function levelUp(zombieId) {
+        $("#txStatus").text("Leveling up your zombie...");
+        return cryptoZombies.methods.levelUp(zombieId)
+          .send({ from: userAccount, value: web3.utils.toWei("0.001", "ether") })
+          .on("receipt", function (receipt) {
+            $("#txStatus").text("Power overwhelming! Zombie successfully leveled up");
+          })
+          .on("error", function (error) {
+            $("#txStatus").text(error);
+          });
+      }
+  
+      // function getZombieDetails(id) {
+      //   return cryptoZombies.methods.zombies(id).call()
+      // }
+  
+      function zombieToOwner(id) {
+        return cryptoZombies.methods.zombieToOwner(id).call()
+      }
+  
+      function getZombiesByOwner(owner) {
+        return cryptoZombies.methods.getZombiesByOwner(owner).call()
+      }
+  
+      window.addEventListener('load', function () {
+  
+  
+        if (typeof web3 !== 'undefined') {
+  
+          web3js = new Web3(web3.currentProvider);
+        } else {
+  
+  
+        }
+  
+  
+        startApp()
+  
+      })
+    </script>
+  </body>
+</html>
